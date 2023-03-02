@@ -1,16 +1,6 @@
-# TODO(billy): this workflow has not been re-named from `acceptance` because
 # Visual Snapshots compares against artifacts from the same workflow name (on main branch)
-# We should rename this when we have a more finalized naming scheme.
-#
-# Also note that this name *MUST* match the filename because GHA
-# only provides the workflow name (https://docs.github.com/en/free-pro-team@latest/actions/reference/environment-variables#default-environment-variables)
-# and GH APIs only support querying by workflow *FILENAME* (https://developer.github.com/v3/actions/workflows/#get-a-workflow)
-name: acceptance
+name: Visual Snapshots
 on:
-  push:
-    branches:
-      - master
-      - releases/**
   pull_request:
 
 # Cancel in progress workflows on pull_requests.
@@ -24,29 +14,11 @@ env:
   SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
 
 jobs:
-  files-changed:
-    name: detect what files changed
+  take-master-acceptance-snapshots:
+    name: Take Default Branch Acceptance Snapshots
     runs-on: ubuntu-20.04
-    timeout-minutes: 3
-    # Map a step output to a job output
-    outputs:
-      acceptance: ${{ steps.changes.outputs.acceptance }}
-      backend_all: ${{ steps.changes.outputs.backend_all }}
-    steps:
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8  # v3.1.0
-
-      - name: Check for backend file changes
-        uses: getsentry/paths-filter@4512585405083f25c027a35db413c2b3b9006d50  # v2.11.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-filters.yml
-
-  acceptance:
-    if: needs.files-changed.outputs.acceptance == 'true'
-    needs: files-changed
-    name: acceptance
-    runs-on: ubuntu-20.04
+    if: |
+      contains( github.event.pull_request.labels.*.name, 'Trigger: Visual Snapshot')
     timeout-minutes: 25
     strategy:
       # This helps not having to run multiple jobs because one fails, thus, reducing resource usage
@@ -54,17 +26,19 @@ jobs:
       fail-fast: false
       matrix:
         # XXX: When updating this, make sure you also update MATRIX_INSTANCE_TOTAL.
-        instance: [0, 1, 2, 3, 4]
+        instance: [0, 1, 2]
         pg-version: ['9.6']
     env:
       # XXX: MATRIX_INSTANCE_TOTAL must be hardcoded to the length of strategy.matrix.instance.
-      MATRIX_INSTANCE_TOTAL: 5
+      MATRIX_INSTANCE_TOTAL: 3
       VISUAL_SNAPSHOT_ENABLE: 1
       TEST_GROUP_STRATEGY: roundrobin
 
     steps:
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8  # v3.1.0
         name: Checkout sentry
+        with:
+          ref: ${{ github.head_ref }} # We want to get the sha from master
 
       - uses: getsentry/action-setup-volta@54775a59c41065f54ecc76d1dd5f2cdc7a1550cb # v1.1.0
 
@@ -110,6 +84,7 @@ jobs:
           chartcuterie: true
           pg-version: ${{ matrix.pg-version }}
 
+      # DO NOT MERGE: Remove the if statemenet  here - it was used to speed up actions running
       - name: Run acceptance tests (#${{ steps.setup.outputs.matrix-instance-number }} of ${{ steps.setup.outputs.matrix-instance-total }})
         run: |
           mkdir -p ${{ steps.setup.outputs.acceptance-dir }}
@@ -124,36 +99,3 @@ jobs:
         with:
           save-only: true
           snapshot-path: .artifacts/visual-snapshots
-
-      # This job runs when FE or BE changes happen, however, we only upload coverage data for
-      # BE changes since it conflicts with codecov's carry forward functionality
-      # Upload coverage data even if running the tests step fails since
-      # it reduces large coverage fluctuations
-      - name: Handle artifacts
-        uses: ./.github/actions/artifacts
-        if: ${{ always() && needs.files-changed.outputs.backend_all == 'true' }}
-
-  acceptance-required-checks:
-    # this is a required check so we need this job to always run and report a status.
-    if: always()
-    name: Acceptance
-    needs: [acceptance, files-changed]
-    runs-on: ubuntu-20.04
-    timeout-minutes: 20
-    steps:
-      # If any jobs we depend on fail, we will fail since this check calls the
-      # visual snapshot service which creates the "Visual Snapshot" status,
-      # which is a required check.
-      # NOTE: A timeout is considered a failure
-      - name: Check for failures
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: |
-          echo "One of the dependent jobs have failed. You may need to re-run it." && exit 1
-
-      - name: Diff snapshots
-        uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
-        if: needs.files-changed.outputs.acceptance == 'true' && github.event.pull_request.head.repo.full_name == 'getsentry/sentry'
-        with:
-          api-token: ${{ secrets.VISUAL_SNAPSHOT_SECRET }}
-          gcs-bucket: 'sentry-visual-snapshots'
-          gcp-service-account-key: ${{ secrets.SNAPSHOT_GOOGLE_SERVICE_ACCOUNT_KEY }}
