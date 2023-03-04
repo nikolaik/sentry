@@ -47,7 +47,7 @@ describe('OrganizationGeneralSettings', function () {
       method: 'PUT',
     });
 
-    userEvent.click(screen.getByRole('checkbox', {name: /early adopter/i}));
+    await userEvent.click(screen.getByRole('checkbox', {name: /early adopter/i}));
 
     await waitFor(() => {
       expect(mock).toHaveBeenCalledWith(
@@ -68,7 +68,7 @@ describe('OrganizationGeneralSettings', function () {
       method: 'PUT',
     });
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole('checkbox', {name: /Enable Code Coverage Insights/i})
     );
 
@@ -92,10 +92,10 @@ describe('OrganizationGeneralSettings', function () {
       body: {...organization, slug: 'new-slug'},
     });
 
-    userEvent.clear(screen.getByRole('textbox', {name: /slug/i}));
-    userEvent.type(screen.getByRole('textbox', {name: /slug/i}), 'new-slug');
+    await userEvent.clear(screen.getByRole('textbox', {name: /slug/i}));
+    await userEvent.type(screen.getByRole('textbox', {name: /slug/i}), 'new-slug');
 
-    userEvent.click(screen.getByLabelText('Save'));
+    await userEvent.click(screen.getByLabelText('Save'));
 
     await waitFor(() => {
       expect(mock).toHaveBeenCalledWith(
@@ -120,10 +120,10 @@ describe('OrganizationGeneralSettings', function () {
 
     const input = screen.getByRole('textbox', {name: /slug/i});
 
-    userEvent.clear(input);
-    userEvent.type(input, 'acme');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'acme');
 
-    userEvent.click(screen.getByLabelText('Save'));
+    await userEvent.click(screen.getByLabelText('Save'));
 
     await waitFor(() => {
       expect(updateMock).toHaveBeenCalledWith(
@@ -140,7 +140,7 @@ describe('OrganizationGeneralSettings', function () {
     });
   });
 
-  it('disables the entire form if user does not have write access', function () {
+  it('disables the entire form if user does not have write access', async function () {
     render(
       <OrganizationGeneralSettings
         {...defaultProps}
@@ -165,7 +165,7 @@ describe('OrganizationGeneralSettings', function () {
     ).toBeInTheDocument();
   });
 
-  it('does not have remove organization button without org:admin permission', function () {
+  it('does not have remove organization button without org:admin permission', async function () {
     render(
       <OrganizationGeneralSettings
         {...defaultProps}
@@ -196,7 +196,7 @@ describe('OrganizationGeneralSettings', function () {
       method: 'DELETE',
     });
 
-    userEvent.click(screen.getByRole('button', {name: /remove organization/i}));
+    await userEvent.click(screen.getByRole('button', {name: /remove organization/i}));
 
     const modal = screen.getByRole('dialog');
 
@@ -205,7 +205,7 @@ describe('OrganizationGeneralSettings', function () {
     ).toBeInTheDocument();
     expect(within(modal).getByText('project')).toBeInTheDocument();
 
-    userEvent.click(within(modal).getByRole('button', {name: /remove organization/i}));
+    await userEvent.click(within(modal).getByRole('button', {name: /remove organization/i}));
 
     await waitFor(() => {
       expect(mock).toHaveBeenCalledWith(
