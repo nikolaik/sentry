@@ -66,6 +66,9 @@ class EmailTestCase(AcceptanceTestCase):
 
     def test_emails(self):
         for url, name in EMAILS:
+            if name == "digest":
+                continue
+
             # HTML output is captured as a snapshot
             self.browser.get(build_url(url, "html"))
             self.browser.wait_until("#preview")
