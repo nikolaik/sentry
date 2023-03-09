@@ -1,6 +1,5 @@
 import {Fragment, useMemo} from 'react';
 import {browserHistory} from 'react-router';
-import {useTheme} from '@emotion/react';
 
 import * as Layout from 'sentry/components/layouts/thirds';
 import Pagination from 'sentry/components/pagination';
@@ -12,7 +11,6 @@ import useReplayList from 'sentry/utils/replays/hooks/useReplayList';
 import {useHaveSelectedProjectsSentAnyReplayEvents} from 'sentry/utils/replays/hooks/useReplayOnboarding';
 import {MutableSearch} from 'sentry/utils/tokenizeSearch';
 import {useLocation} from 'sentry/utils/useLocation';
-import useMedia from 'sentry/utils/useMedia';
 import useOrganization from 'sentry/utils/useOrganization';
 import ReplaysFilters from 'sentry/views/replays/filters';
 import ReplayOnboardingPanel from 'sentry/views/replays/list/replayOnboardingPanel';
@@ -24,8 +22,6 @@ import {REPLAY_LIST_FIELDS} from 'sentry/views/replays/types';
 function ReplaysList() {
   const location = useLocation<ReplayListLocationQuery>();
   const organization = useOrganization();
-  const theme = useTheme();
-  const hasRoomForColumns = useMedia(`(min-width: ${theme.breakpoints.small})`);
 
   const eventView = useMemo(() => {
     const query = decodeScalar(location.query.query, '');
@@ -65,10 +61,9 @@ function ReplaysList() {
               replays={replays}
               sort={eventView.sorts[0]}
               visibleColumns={[
-                ReplayColumns.session,
-                ...(hasRoomForColumns
-                  ? [ReplayColumns.projectId, ReplayColumns.startedAt]
-                  : []),
+                ReplayColumns.replay,
+                ReplayColumns.os,
+                ReplayColumns.browser,
                 ReplayColumns.duration,
                 ReplayColumns.countErrors,
                 ReplayColumns.activity,
