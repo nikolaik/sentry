@@ -181,5 +181,5 @@ jobs:
         uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
         with:
           save-only: true
-          artifact-name: 'visual-snapshots-pr'
+          artifact-name: 'visual-snapshots-diff'
           snapshot-path: .artifacts/visual-snapshots
