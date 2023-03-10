@@ -84,7 +84,6 @@ jobs:
           chartcuterie: true
           pg-version: ${{ matrix.pg-version }}
 
-      # DO NOT MERGE: Remove the if statemenet  here - it was used to speed up actions running
       - name: Run acceptance tests (#${{ steps.setup.outputs.matrix-instance-number }} of ${{ steps.setup.outputs.matrix-instance-total }})
         run: |
           mkdir -p ${{ steps.setup.outputs.acceptance-dir }}
@@ -98,4 +97,5 @@ jobs:
         uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
         with:
           save-only: true
+          artifact-name: 'visual-snapshots-base'
           snapshot-path: .artifacts/visual-snapshots
