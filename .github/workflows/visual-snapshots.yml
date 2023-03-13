@@ -181,5 +181,21 @@ jobs:
         uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
         with:
           save-only: true
-          artifact-name: 'visual-snapshots-merge'
+          artifact-name: 'visual-snapshots-pr'
           snapshot-path: .artifacts/visual-snapshots
+
+  diff-snapshots:
+    name: Diff snapshots
+    needs: [take-master-acceptance-snapshots, take-pr-acceptance-snapshots]
+    runs-on: ubuntu-20.04
+    if: |
+      contains( github.event.pull_request.labels.*.name, 'Trigger: Visual Snapshot')
+    timeout-minutes: 25
+    steps:
+      - name: Diff snapshots
+        uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
+        with:
+          api-token: ${{ secrets.VISUAL_SNAPSHOT_SECRET }}
+          gcs-bucket: 'sentry-visual-snapshots'
+          gcp-service-account-key: ${{ secrets.SNAPSHOT_GOOGLE_SERVICE_ACCOUNT_KEY }}
+          base-artifact-name: 'visual-snapshots-base'
