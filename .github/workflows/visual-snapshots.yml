@@ -193,7 +193,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Diff snapshots
-        uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
+        uses: gauntface/action-visual-snapshot@mgs-base-artifact
         with:
           api-token: ${{ secrets.VISUAL_SNAPSHOT_SECRET }}
           gcs-bucket: 'sentry-visual-snapshots'
