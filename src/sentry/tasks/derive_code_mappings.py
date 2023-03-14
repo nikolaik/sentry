@@ -7,7 +7,11 @@ from sentry_sdk import set_tag, set_user
 
 from sentry import features
 from sentry.db.models.fields.node import NodeData
-from sentry.integrations.utils.code_mapping import CodeMapping, CodeMappingTreesHelper
+from sentry.integrations.utils.code_mapping import (
+    CodeMapping,
+    CodeMappingTreesHelper,
+    TooManyApiErrors,
+)
 from sentry.locks import locks
 from sentry.models import Project
 from sentry.models.integrations.organization_integration import OrganizationIntegration
@@ -114,6 +118,12 @@ def derive_code_mappings(
         with lock.acquire():
             # This method is specific to the GithubIntegration
             trees = installation.get_trees_for_org()  # type: ignore
+    except TooManyApiErrors as error:
+        extra["error_limit"] = error.error_limit
+        logger.warning(
+            "Encountered too many errors connecting to GitHub. Aborting task.", extra=extra
+        )
+        return
     except ApiError as error:
         process_error(error, extra)
         return
