@@ -53,7 +53,7 @@ describe('OwnershipRulesTable', () => {
     expect(screen.queryByText(user2.name)).not.toBeInTheDocument();
   });
 
-  it('should filter by rule type and pattern', () => {
+  it('should filter by rule type and pattern', async () => {
     const owners: Actor[] = [{type: 'user', id: user1.id, name: user1.name}];
     const rules: ParsedOwnershipRule[] = [
       {matcher: {pattern: 'filepath', type: 'path'}, owners},
@@ -63,19 +63,20 @@ describe('OwnershipRulesTable', () => {
     render(<OwnershipRulesTable projectRules={rules} codeowners={[]} />);
 
     const searchbar = screen.getByPlaceholderText('Search by type or rule');
-    userEvent.paste(searchbar, 'path');
+    await userEvent.click(searchbar);
+    await userEvent.paste('path');
 
     expect(screen.getByText('filepath')).toBeInTheDocument();
     expect(screen.queryByText('mytag')).not.toBeInTheDocument();
 
-    userEvent.clear(searchbar);
-    userEvent.paste(searchbar, 'mytag');
+    await userEvent.clear(searchbar);
+    await userEvent.paste('mytag');
 
     expect(screen.getByText('mytag')).toBeInTheDocument();
     expect(screen.queryByText('filepath')).not.toBeInTheDocument();
   });
 
-  it('should paginate results', () => {
+  it('should paginate results', async () => {
     const owners: Actor[] = [{type: 'user', id: user1.id, name: user1.name}];
     const rules: ParsedOwnershipRule[] = Array(100)
       .fill(0)
@@ -88,7 +89,7 @@ describe('OwnershipRulesTable', () => {
 
     expect(screen.getByText('mytag1')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', {name: 'Next page'}));
+    await userEvent.click(screen.getByRole('button', {name: 'Next page'}));
     expect(screen.getByText('mytag30')).toBeInTheDocument();
     expect(screen.queryByText('mytag1')).not.toBeInTheDocument();
   });
