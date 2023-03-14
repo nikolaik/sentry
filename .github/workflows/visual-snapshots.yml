@@ -1,5 +1,5 @@
 # Visual Snapshots compares against artifacts from the same workflow name (on main branch)
-name: Visual Snapshots
+name: visual-snapshots
 on:
   pull_request:
 
