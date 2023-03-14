@@ -59,7 +59,11 @@ describe('TeamMembers', function () {
       />
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getAllByTestId('letter_avatar-avatar')[0]);
 
     expect(createMock).toHaveBeenCalled();
@@ -75,7 +79,11 @@ describe('TeamMembers', function () {
       />
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getAllByTestId('letter_avatar-avatar')[0]);
 
     expect(createMock).toHaveBeenCalled();
@@ -91,7 +99,11 @@ describe('TeamMembers', function () {
       />
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getAllByTestId('letter_avatar-avatar')[0]);
 
     expect(createMock).toHaveBeenCalled();
@@ -107,7 +119,11 @@ describe('TeamMembers', function () {
       />
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getAllByTestId('letter_avatar-avatar')[0]);
 
     expect(openTeamAccessRequestModal).toHaveBeenCalled();
@@ -129,7 +145,11 @@ describe('TeamMembers', function () {
       {context: routerContext}
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getByTestId('invite-member'));
 
     expect(openInviteMembersModal).toHaveBeenCalled();
@@ -151,7 +171,11 @@ describe('TeamMembers', function () {
       {context: routerContext}
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getByTestId('invite-member'));
 
     expect(openInviteMembersModal).toHaveBeenCalled();
@@ -170,7 +194,11 @@ describe('TeamMembers', function () {
       {context: routerContext}
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getByTestId('invite-member'));
 
     expect(openInviteMembersModal).toHaveBeenCalled();
@@ -189,7 +217,11 @@ describe('TeamMembers', function () {
       {context: routerContext}
     );
 
-    await userEvent.click((await screen.findAllByRole('button', {name: 'Add Member'}))[0]);
+    await userEvent.click(
+      (
+        await screen.findAllByRole('button', {name: 'Add Member'})
+      )[0]
+    );
     await userEvent.click(screen.getByTestId('invite-member'));
 
     expect(openInviteMembersModal).toHaveBeenCalled();
