@@ -8,7 +8,13 @@ import sentry_sdk
 
 from sentry.integrations.client import ApiClient
 from sentry.integrations.github.utils import get_jwt, get_next_link
-from sentry.integrations.utils.code_mapping import Repo, RepoTree, filter_source_code_files
+from sentry.integrations.utils.code_mapping import (
+    MAX_CONNECTION_ERRORS,
+    Repo,
+    RepoTree,
+    TooManyApiErrors,
+    filter_source_code_files,
+)
 from sentry.models import Integration, Repository
 from sentry.services.hybrid_cloud.integration import RpcIntegration, integration_service
 from sentry.shared_integrations.exceptions.base import ApiError
@@ -194,8 +200,13 @@ class GitHubClientMixin(ApiClient):  # type: ignore
 
         return repositories
 
-    def _populate_trees_process_error(self, error: ApiError, extra: Dict[str, str]) -> None:
+    def _populate_trees_process_error(self, error: ApiError, extra: Dict[str, str]) -> bool:
+        """
+        Log different messages based on the error received. Returns a boolean indicating whether
+        the error should count towards the connection errors tally.
+        """
         msg = "Continuing execution."
+        should_count_error = False
         txt = error.text
         if error.json:
             json_data: JSONData = error.json
@@ -211,10 +222,12 @@ class GitHubClientMixin(ApiClient):  # type: ignore
             logger.warning(f"Github has blocked the repository. {msg}", extra=extra)
         elif txt == "Server Error":
             logger.warning(f"Github failed to respond. {msg}.", extra=extra)
+            should_count_error = True
         elif txt == "Bad credentials":
             logger.warning(f"No permission granted for this repo. {msg}.", extra=extra)
         elif txt.startswith("Unable to reach host:"):
             logger.warning(f"Unable to reach host at the moment. {msg}.", extra=extra)
+            should_count_error = True
         elif txt.startswith("Due to U.S. trade controls law restrictions, this GitHub"):
             logger.warning("Github has blocked this org. We will not continue.", extra=extra)
             # Raising the error will be handled at the task level
@@ -226,13 +239,18 @@ class GitHubClientMixin(ApiClient):  # type: ignore
                 f"Investigate if to raise error. An error happened. {msg}", extra=extra
             )
 
+        return should_count_error
+
     def _populate_trees(self, repositories: List[Dict[str, str]]) -> Dict[str, RepoTree]:
         """
         For every repository, fetch the tree associated and cache it.
         This function takes API rate limits into consideration to prevent exhaustion.
+        Raises TooManyApiErrors if more than `MAX_CONNECTION_ERRORS` problems are encountered
+        connecting to GitHub.
         """
         trees: Dict[str, RepoTree] = {}
         only_use_cache = False
+        connection_error_count = 0
 
         remaining_requests = MINIMUM_REQUESTS
         try:
@@ -264,11 +282,18 @@ class GitHubClientMixin(ApiClient):  # type: ignore
                     repo_info, only_use_cache, (3600 * 24) + (3600 * (index % 24))
                 )
             except ApiError as error:
-                self._populate_trees_process_error(error, extra)
+                should_count_error = self._populate_trees_process_error(error, extra)
+                if should_count_error:
+                    connection_error_count += 1
             except Exception:
                 # Report for investigation but do not stop processing
                 logger.exception(
                     "Failed to populate_tree. Investigate. Contining execution.", extra=extra
+                )
+
+            if connection_error_count >= MAX_CONNECTION_ERRORS:
+                raise TooManyApiErrors(
+                    "Bailing because we've hit too many errors connecting to GitHub."
                 )
 
         return trees
