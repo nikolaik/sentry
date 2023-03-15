@@ -11,8 +11,12 @@ from sentry.api.bases.project import ProjectEndpoint, ProjectReleasePermission
 from sentry.api.endpoints.debug_files import has_download_permission
 from sentry.api.serializers import serialize
 from sentry.models import DebugIdArtifactBundle, File
+from sentry.models.artifactbundle import ArtifactBundleArchive, ReleaseArtifactBundle
 
 logger = logging.getLogger("sentry.api")
+
+
+MAX_SCANNED_BUNDLES = 2
 
 
 @region_silo_endpoint
@@ -22,7 +26,7 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
     def download_file(self, file_id, project):
         rate_limited = ratelimits.is_limited(
             project=project,
-            key=f"rl:DSymFilesEndpoint:download:{file_id}:{project.id}",
+            key=f"rl:ArtifactLookupEndpoint:download:{file_id}:{project.id}",
             limit=10,
         )
         if rate_limited:
@@ -30,7 +34,7 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
                 "notification.rate_limited",
                 extra={"project_id": project.id, "file_id": file_id},
             )
-            return HttpResponse({"Too many download requests"}, status=403)
+            return HttpResponse({"Too many download requests"}, status=429)
 
         file = File.objects.filter(id=file_id).first()
 
@@ -54,40 +58,38 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
 
         Retrieve a list of individual artifacts or artifact bundles for a given project.
 
-        :pparam string organization_slug: the slug of the organization the
-                                          file belongs to.
-        :pparam string project_slug: the slug of the project to list the
-                                     DIFs of.
-        :qparam string debug_ids: If set, will query and return all the artifact
-                                  bundles that contain the given `debug_ids`.
-        :qparam string urls: If set, will query and return all the individual
+        :pparam string organization_slug: the slug of the organization to query.
+        :pparam string project_slug: the slug of the project to query.
+        :qparam string debug_id: If set, will query and return all the artifact
+                                  bundles that match one of the given `debug_id`s.
+        :qparam string url: If set, will query and return all the individual
                              artifacts, or artifact bundles that contain files
                              that match the `url`. This is using a substring-match.
-        :qparam string release: Used in conjunction with `urls`.
-        :qparam string dist: Used in conjunction with `urls`.
+        :qparam string release: Used in conjunction with `url`.
+        :qparam string dist: Used in conjunction with `url`.
 
         :auth: required
         """
 
-        download_requested = request.GET.get("download") is not None
-        if download_requested and (has_download_permission(request, project)):
-            return self.download_file(request.GET.get("download"), project)
-        elif download_requested:
-            return Response(status=403)
+        if request.GET.get("download") is not None:
+            if has_download_permission(request, project):
+                return self.download_file(request.GET.get("download"), project)
+            else:
+                return Response(status=403)
 
         # TODO: is there a better way to construct a url to this same route?
         base_url = request.build_absolute_uri(request.path)
 
         debug_ids = []
-        for debug_id in request.GET.getlist("debug_ids"):
+        for debug_id in request.GET.getlist("debug_id"):
             try:
                 debug_ids.append(normalize_debug_id(debug_id))
             except SymbolicError:
                 pass
 
-        # urls = request.GET.getlist("urls")
-        # release = request.GET.get("release")
-        # dist = request.GET.get("dist")
+        urls = request.GET.getlist("url")
+        release = request.GET.get("release")
+        dist = request.GET.get("dist")
 
         # For debug_ids, we will query for the artifact_bundle/file_id directly
         bundle_file_ids = set(
@@ -100,21 +102,44 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
             .distinct("artifact_bundle__file_id")
         )
 
-        # If we have `urls`, we want to:
-        # First, get the newest X artifact bundles, and *look inside them* to
-        # figure out if the file is included in them
-        # XXX: does that even work for partial matches?
-        # As in: `urls` would have `"/path/to/file"` for a file with the full url
-        # `"~/path/to/file.min.js"`.
+        if len(urls) > 0:
+            if release is None:
+                logger.error("trying to look up artifacts by `urls` without a `release`")
+            else:
+                # If we have `urls`, we want to:
+                # First, get the newest X artifact bundles, and *look inside them*
+                # to figure out if the file is included in any of them
+                releases_with_bundles = ReleaseArtifactBundle.objects.filter(
+                    organization_id=project.organization.id,
+                    release_name=release,
+                    dist_name=dist or "",
+                ).select_related("artifact_bundle__file")[:MAX_SCANNED_BUNDLES]
 
-        # TODO: also query for and return bundles based on `urls`
+                manifests = []
+                for release in releases_with_bundles:
+                    file_id = release.artifact_bundle.file.id
+                    with release.artifact_bundle.file.getfile() as file:
+                        archive = ArtifactBundleArchive(file)
+                        manifest = archive._read_manifest()
+                        manifests.append((file_id, manifest))
 
-        # Possibly use the algorithm sketched up here:
-        # https://github.com/getsentry/sentry/pull/45697#issuecomment-1466389132
-        # That would narrow down our set of bundles to the minimum set that covers
-        # the file names we are querying for, and also leave us with the remaining
-        # set of file names that are not covered by any bundle, to look up below
-        # TODO: add those to `bundle_file_ids`
+                def url_in_any_manifest(url):
+                    for (file_id, manifest) in manifests:
+                        if url_exists_in_manifest(manifest, url):
+                            bundle_file_ids.add(file_id)
+                            return True
+                    return False
+
+                missing_urls = []
+                for url in urls:
+                    if not url_in_any_manifest(url):
+                        missing_urls.append(url)
+
+                # Possibly use the algorithm sketched up here:
+                # https://github.com/getsentry/sentry/pull/45697#issuecomment-1466389132
+                # That would narrow down our set of bundles to the minimum set that covers
+                # the file names we are querying for, and also leave us with the remaining
+                # set of file names that are not covered by any bundle, to look up below
 
         # Second, look for a legacy `ReleaseFile` (or whatever) if an individual
         # file exists matching the release/dist/url we are looking for.
@@ -142,8 +167,8 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
                 {
                     "type": "bundle",
                     "url": url,
-                    # I believe `name` is the url/abs_path of the file?
-                    # As in: `"~/path/to/file.min.js"`?
+                    # The `name` is the url/abs_path of the file,
+                    # as in: `"~/path/to/file.min.js"`.
                     "abs_path": file.name,
                     # These headers should ideally include the `Sourcemap` reference
                     "headers": file.headers,
@@ -152,3 +177,17 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
 
         # TODO: how to properly paginate this thing?
         return Response(serialize(found_artifacts, request.user))
+
+
+def url_exists_in_manifest(manifest: dict, url: str) -> bool:
+    """
+    Looks through all the files in the `ArtifactBundle` manifest and see if the
+    `url` matches any of the files.
+    """
+    try:
+        files = manifest.get("files", dict())
+        for file in files.values():
+            if url in file.get("url", ""):
+                return True
+    except Exception:
+        return False
