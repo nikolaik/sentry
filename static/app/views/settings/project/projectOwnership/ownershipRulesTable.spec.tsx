@@ -105,6 +105,40 @@ describe('OwnershipRulesTable', () => {
     expect(screen.queryByText('mytag')).toBeInTheDocument();
   });
 
+  it('preserves selected teams when rules are updated', async () => {
+    const rules: ParsedOwnershipRule[] = [
+      {
+        matcher: {pattern: 'filepath', type: 'path'},
+        owners: [{type: 'user', id: user1.id, name: user1.name}],
+      },
+      {
+        matcher: {pattern: 'anotherpath', type: 'path'},
+        owners: [{type: 'user', id: user2.id, name: user2.name}],
+      },
+    ];
+
+    const {rerender} = render(
+      <OwnershipRulesTable projectRules={rules} codeowners={[]} />
+    );
+
+    // Clear the filter
+    await userEvent.click(screen.getByRole('button', {name: 'My Teams'}));
+    await userEvent.click(screen.getByRole('button', {name: 'Clear'}));
+    expect(screen.getAllByText('path')).toHaveLength(2);
+
+    const newRules: ParsedOwnershipRule[] = [
+      ...rules,
+      {
+        matcher: {pattern: 'thirdpath', type: 'path'},
+        owners: [{type: 'user', id: user2.id, name: user2.name}],
+      },
+    ];
+
+    rerender(<OwnershipRulesTable projectRules={newRules} codeowners={[]} />);
+    expect(screen.getAllByText('path')).toHaveLength(3);
+    expect(screen.getByRole('button', {name: 'Everyone'})).toBeInTheDocument();
+  });
+
   it('should paginate results', async () => {
     const owners: Actor[] = [{type: 'user', id: user1.id, name: user1.name}];
     const rules: ParsedOwnershipRule[] = Array(100)
