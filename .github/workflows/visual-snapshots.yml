@@ -94,7 +94,7 @@ jobs:
           PYTEST_SNAPSHOTS_DIR: ${{ steps.setup.outputs.acceptance-dir }}
 
       - name: Save snapshots
-        uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
+        uses: getsentry/action-visual-snapshot@611c6e034d3eef558424b9b96e692288af232790
         with:
           save-only: true
           artifact-name: 'visual-snapshots-base'
@@ -178,7 +178,7 @@ jobs:
           PYTEST_SNAPSHOTS_DIR: ${{ steps.setup.outputs.acceptance-dir }}
 
       - name: Save snapshots
-        uses: getsentry/action-visual-snapshot@ea663f1be8b73c86b18081d714423ce52352e934
+        uses: getsentry/action-visual-snapshot@611c6e034d3eef558424b9b96e692288af232790
         with:
           save-only: true
           artifact-name: 'visual-snapshots-pr'
@@ -193,7 +193,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Diff snapshots
-        uses: gauntface/action-visual-snapshot@mgs-base-artifact
+        uses: getsentry/action-visual-snapshot@611c6e034d3eef558424b9b96e692288af232790
         with:
           api-token: ${{ secrets.VISUAL_SNAPSHOT_SECRET }}
           gcs-bucket: 'sentry-visual-snapshots'
