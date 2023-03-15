@@ -82,9 +82,6 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
             else:
                 return Response(status=403)
 
-        # TODO: is there a better way to construct a url to this same route?
-        base_url = request.build_absolute_uri(request.path)
-
         debug_ids = []
         for debug_id in request.GET.getlist("debug_id"):
             try:
@@ -158,25 +155,22 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
         individual_files = set()
 
         # Then: Construct our response
+        url_constructor = UrlConstructor(request)
 
         found_artifacts = []
         for file_id in bundle_file_ids:
-            # TODO: is there a better way to construct a url to this same route?
-            url = f"{base_url}?download={file_id}"
             found_artifacts.append(
                 {
                     "type": "bundle",
-                    "url": url,
+                    "url": url_constructor.url_for_file_id(file_id),
                 }
             )
 
         for file in individual_files:
-            # TODO: is there a better way to construct a url to this same route?
-            url = f"{base_url}?download={file.id}"
             found_artifacts.append(
                 {
-                    "type": "bundle",
-                    "url": url,
+                    "type": "file",
+                    "url": url_constructor.url_for_file_id(file.id),
                     # The `name` is the url/abs_path of the file,
                     # as in: `"~/path/to/file.min.js"`.
                     "abs_path": file.name,
@@ -202,3 +196,18 @@ def url_exists_in_manifest(manifest: dict, url: str) -> bool:
                 return True
     except Exception:
         return False
+
+
+class UrlConstructor:
+    def __init__(self, request: Request):
+        # TODO: is there a better way to construct a url to this same route?
+        self.base_url = request.build_absolute_uri(request.path)
+
+    def url_for_file_id(self, file_id: int) -> str:
+        # NOTE: Returning a self-route that requires authentication (via Bearer token)
+        # is not really forward compatible with a pre-signed URL that does not
+        # require any authentication or headers whatsoever.
+        # This also requires a workaround in Symbolicator, as its generic http
+        # downloader blocks "internal" IPs, whereas the internal Sentry downloader
+        # is explicitly exempt.
+        return f"{self.base_url}?download={file_id}"

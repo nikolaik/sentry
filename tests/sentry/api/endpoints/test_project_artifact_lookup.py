@@ -48,6 +48,12 @@ def make_compressed_zip_file(artifact_name, files):
 
 
 class ArtifactLookupTest(APITestCase):
+    def assert_download_matches_file(self, url: str, file: File):
+        response = self.client.get(url)
+        with file.getfile() as file:
+            for chunk in response:
+                assert file.read(len(chunk)) == chunk
+
     def test_query_by_debug_ids(self):
         debug_id_a = "aaaaaaaa-0000-0000-0000-000000000000"
         debug_id_b = "bbbbbbbb-0000-0000-0000-000000000000"
@@ -107,38 +113,23 @@ class ArtifactLookupTest(APITestCase):
 
         assert len(response) == 1
         assert response[0]["type"] == "bundle"
-
-        response = self.client.get(response[0]["url"])
-        for chunk in response.streaming_content:
-            assert chunk == b"ab"
+        self.assert_download_matches_file(response[0]["url"], file_ab)
 
         # query by two debug-ids pointing to the same bundle
         response = self.client.get(f"{url}?debug_id={debug_id_a}&debug_id={debug_id_b}").json()
 
         assert len(response) == 1
         assert response[0]["type"] == "bundle"
-
-        response = self.client.get(response[0]["url"])
-        for chunk in response.streaming_content:
-            assert chunk == b"ab"
+        self.assert_download_matches_file(response[0]["url"], file_ab)
 
         # query by two debug-ids pointing to different bundles
         response = self.client.get(f"{url}?debug_id={debug_id_a}&debug_id={debug_id_c}").json()
 
         assert len(response) == 2
         assert response[0]["type"] == "bundle"
+        self.assert_download_matches_file(response[0]["url"], file_ab)
         assert response[1]["type"] == "bundle"
-
-        url_ab = response[0]["url"]
-        url_c = response[1]["url"]
-
-        response = self.client.get(url_ab)
-        for chunk in response.streaming_content:
-            assert chunk == b"ab"
-
-        response = self.client.get(url_c)
-        for chunk in response.streaming_content:
-            assert chunk == b"c"
+        self.assert_download_matches_file(response[1]["url"], file_c)
 
     def test_query_by_url(self):
         debug_id_a = "aaaaaaaa-0000-0000-0000-000000000000"
@@ -218,7 +209,7 @@ class ArtifactLookupTest(APITestCase):
 
         assert len(response) == 1
         assert response[0]["type"] == "bundle"
-        assert response[0]["url"].endswith(str(artifact_bundle_a.id))
+        self.assert_download_matches_file(response[0]["url"], file_a)
 
         # query by two urls yielding two bundles
         response = self.client.get(
@@ -227,9 +218,9 @@ class ArtifactLookupTest(APITestCase):
 
         assert len(response) == 2
         assert response[0]["type"] == "bundle"
-        assert response[0]["url"].endswith(str(artifact_bundle_a.id))
+        self.assert_download_matches_file(response[0]["url"], file_a)
         assert response[1]["type"] == "bundle"
-        assert response[1]["url"].endswith(str(artifact_bundle_b.id))
+        self.assert_download_matches_file(response[1]["url"], file_b)
 
         # query by both debug-id and url with overlapping bundles
         response = self.client.get(
@@ -238,7 +229,7 @@ class ArtifactLookupTest(APITestCase):
 
         assert len(response) == 1
         assert response[0]["type"] == "bundle"
-        assert response[0]["url"].endswith(str(artifact_bundle_a.id))
+        self.assert_download_matches_file(response[0]["url"], file_a)
 
         # query by both debug-id and url
         response = self.client.get(
@@ -247,6 +238,6 @@ class ArtifactLookupTest(APITestCase):
 
         assert len(response) == 2
         assert response[0]["type"] == "bundle"
-        assert response[0]["url"].endswith(str(artifact_bundle_a.id))
+        self.assert_download_matches_file(response[0]["url"], file_a)
         assert response[1]["type"] == "bundle"
-        assert response[1]["url"].endswith(str(artifact_bundle_b.id))
+        self.assert_download_matches_file(response[1]["url"], file_b)
