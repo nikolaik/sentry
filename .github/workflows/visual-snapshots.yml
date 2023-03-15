@@ -214,7 +214,7 @@ jobs:
       fail-fast: false
       matrix:
         # XXX: When updating this, make sure you also update MATRIX_INSTANCE_TOTAL.
-        instance: [0, 1, 2]
+        instance: [0, 1, 2, 3]
     env:
       VISUAL_HTML_ENABLE: 1
 
@@ -244,7 +244,7 @@ jobs:
         env:
           GITHUB_PR_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GITHUB_PR_REF: ${{ github.event.pull_request.head.ref || github.ref }}
-          CI_NODE_TOTAL: 3
+          CI_NODE_TOTAL: 4
           CI_NODE_INDEX: ${{ matrix.instance }}
         run: |
           SENTRY_PROFILER_LOGGING_MODE=eager JEST_TESTS=$(yarn -s jest --listTests --json) yarn test-ci --forceExit
@@ -273,7 +273,7 @@ jobs:
       # and reducing the risk that one of many runs would turn red again (read: intermittent tests)
       fail-fast: false
       matrix:
-        instance: [0, 1, 2]
+        instance: [0, 1, 2, 3]
     env:
       VISUAL_HTML_ENABLE: 1
 
@@ -301,7 +301,7 @@ jobs:
         env:
           GITHUB_PR_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GITHUB_PR_REF: ${{ github.event.pull_request.head.ref || github.ref }}
-          CI_NODE_TOTAL: 3
+          CI_NODE_TOTAL: 4
           CI_NODE_INDEX: ${{ matrix.instance }}
         run: |
           SENTRY_PROFILER_LOGGING_MODE=eager JEST_TESTS=$(yarn -s jest --listTests --json) yarn test-ci --forceExit
