@@ -193,7 +193,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Diff snapshots
-        uses: getsentry/action-visual-snapshot@611c6e034d3eef558424b9b96e692288af232790
+        uses: gauntface/action-visual-snapshot@mgs-testing
         with:
           api-token: ${{ secrets.VISUAL_SNAPSHOT_SECRET }}
           gcs-bucket: 'sentry-visual-snapshots'
@@ -328,7 +328,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Diff snapshots
-        uses: getsentry/action-visual-snapshot@611c6e034d3eef558424b9b96e692288af232790
+        uses: gauntface/action-visual-snapshot@mgs-testing
         with:
           api-token: ${{ secrets.VISUAL_SNAPSHOT_SECRET }}
           gcs-bucket: 'sentry-visual-snapshots'
