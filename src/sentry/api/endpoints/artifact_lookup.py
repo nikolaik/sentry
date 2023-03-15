@@ -16,6 +16,11 @@ from sentry.models.artifactbundle import ArtifactBundleArchive, ReleaseArtifactB
 logger = logging.getLogger("sentry.api")
 
 
+# The number of bundles we want to return based on a `debug_id` query.
+MAX_BUNDLES_BY_DEBUG_ID = 4
+
+
+# The number of ArtifactBundles we open up and parse to look for files inside.
 MAX_SCANNED_BUNDLES = 2
 
 
@@ -99,12 +104,17 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
             )
             .select_related("artifact_bundle")
             .values_list("artifact_bundle__file_id", flat=True)
-            .distinct("artifact_bundle__file_id")
+            .distinct("artifact_bundle__file_id")[: MAX_BUNDLES_BY_DEBUG_ID + 1]
         )
+        if len(bundle_file_ids) > MAX_BUNDLES_BY_DEBUG_ID:
+            logger.error(
+                "querying for artifact bundles by `debug_id` yielded more than %s results",
+                MAX_BUNDLES_BY_DEBUG_ID,
+            )
 
         if len(urls) > 0:
             if release is None:
-                logger.error("trying to look up artifacts by `urls` without a `release`")
+                logger.error("trying to look up artifacts by `url` without a `release`")
             else:
                 # If we have `urls`, we want to:
                 # First, get the newest X artifact bundles, and *look inside them*
@@ -175,7 +185,8 @@ class ArtifactLookupEndpoint(ProjectEndpoint):
                 }
             )
 
-        # TODO: how to properly paginate this thing?
+        # NOTE: We do not paginate this response, as we have very tight limits
+        # on all the individual queries.
         return Response(serialize(found_artifacts, request.user))
 
 
