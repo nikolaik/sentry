@@ -234,7 +234,7 @@ jobs:
           key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock', 'api-docs/yarn.lock') }}
 
       - name: Install Javascript Dependencies
-        # if: steps.nodemodulescache.outputs.cache-hit != 'true'
+        if: steps.nodemodulescache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
 
       - name: Build CSS
