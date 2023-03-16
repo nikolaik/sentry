@@ -25,7 +25,7 @@ MAX_SCANNED_BUNDLES = 2
 
 
 @region_silo_endpoint
-class ArtifactLookupEndpoint(ProjectEndpoint):
+class ProjectArtifactLookupEndpoint(ProjectEndpoint):
     permission_classes = (ProjectReleasePermission,)
 
     def download_file(self, file_id, project):
